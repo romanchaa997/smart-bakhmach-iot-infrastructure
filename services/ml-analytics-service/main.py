@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import sys
 import os
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 import joblib
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -81,7 +81,7 @@ async def predict_energy_consumption(
     """Predict future energy consumption for a smart meter"""
     try:
         # Fetch historical data
-        start_date = datetime.utcnow() - timedelta(days=request.historical_days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=request.historical_days)
         result = db.execute(
             text("""
                 SELECT timestamp, power_consumption
@@ -105,14 +105,14 @@ async def predict_energy_consumption(
         model.fit(timestamps, consumption)
         
         # Predict next 24 hours
-        future_timestamp = (datetime.utcnow() - data[0][0]).total_seconds() / 3600 + 24
+        future_timestamp = (datetime.now(timezone.utc) - data[0][0]).total_seconds() / 3600 + 24
         prediction = model.predict([[future_timestamp]])[0]
         
         # Calculate confidence score based on R² score
         confidence = model.score(timestamps, consumption)
         
         # Store prediction
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         result = db.execute(
             text("""
                 INSERT INTO predictions 
@@ -165,7 +165,7 @@ async def predict_water_leak(
     """Predict likelihood of water leak"""
     try:
         # Fetch historical data
-        start_date = datetime.utcnow() - timedelta(days=request.historical_days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=request.historical_days)
         result = db.execute(
             text("""
                 SELECT flow_rate, pressure, leak_detected
@@ -184,17 +184,17 @@ async def predict_water_leak(
         X = np.array([[d[0] or 0, d[1] or 0] for d in data])
         y = np.array([1 if d[2] else 0 for d in data])
         
-        # Train random forest classifier
-        model = RandomForestRegressor(n_estimators=50, random_state=42)
+        # Train random forest classifier for binary classification
+        model = RandomForestClassifier(n_estimators=50, random_state=42)
         model.fit(X, y)
         
-        # Predict current likelihood
+        # Predict current likelihood (probability of leak)
         latest_reading = X[0:1]
-        leak_probability = model.predict(latest_reading)[0]
+        leak_probability = model.predict_proba(latest_reading)[0][1]  # Probability of class 1 (leak)
         confidence = model.score(X, y)
         
         # Store prediction
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         result = db.execute(
             text("""
                 INSERT INTO predictions 
@@ -248,7 +248,7 @@ async def predict_transport_demand(
     """Predict passenger demand for a vehicle/route"""
     try:
         # Fetch historical data
-        start_date = datetime.utcnow() - timedelta(days=request.historical_days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=request.historical_days)
         result = db.execute(
             text("""
                 SELECT 
@@ -276,13 +276,13 @@ async def predict_transport_demand(
         model.fit(X, y)
         
         # Predict for current hour and day
-        current_hour = datetime.utcnow().hour
-        current_day = datetime.utcnow().weekday()
+        current_hour = datetime.now(timezone.utc).hour
+        current_day = datetime.now(timezone.utc).weekday()
         prediction = model.predict([[current_hour, current_day]])[0]
         confidence = model.score(X, y)
         
         # Store prediction
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         result = db.execute(
             text("""
                 INSERT INTO predictions 
@@ -334,7 +334,7 @@ async def predict_air_quality(
     """Predict future air quality index"""
     try:
         # Fetch historical data
-        start_date = datetime.utcnow() - timedelta(days=request.historical_days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=request.historical_days)
         result = db.execute(
             text("""
                 SELECT timestamp, aqi, temperature, humidity
@@ -358,12 +358,12 @@ async def predict_air_quality(
         model.fit(timestamps, aqi_values)
         
         # Predict next 24 hours
-        future_timestamp = (datetime.utcnow() - data[0][0]).total_seconds() / 3600 + 24
+        future_timestamp = (datetime.now(timezone.utc) - data[0][0]).total_seconds() / 3600 + 24
         prediction = model.predict([[future_timestamp]])[0]
         confidence = model.score(timestamps, aqi_values)
         
         # Store prediction
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         result = db.execute(
             text("""
                 INSERT INTO predictions 
@@ -474,7 +474,7 @@ async def get_model_accuracy(
     current_user: dict = Depends(get_current_user)
 ):
     """Get model accuracy metrics"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     result = db.execute(
         text("""

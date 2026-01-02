@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import sys
 import os
 
@@ -100,7 +100,7 @@ async def create_sensor(
             "sensor_id": sensor.sensor_id,
             "location": sensor.location,
             "type": sensor.sensor_type,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         return {
@@ -147,7 +147,7 @@ async def create_reading(
 ):
     """Record a water reading"""
     try:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         result = db.execute(
             text("""
                 INSERT INTO water_readings 
@@ -248,7 +248,7 @@ async def get_leak_alerts(
     current_user: dict = Depends(get_current_user)
 ):
     """Get recent leak detections"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     result = db.execute(
         text("""
@@ -284,7 +284,7 @@ async def get_water_analytics(
     current_user: dict = Depends(get_current_user)
 ):
     """Get water consumption analytics"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     if sensor_id:
         result = db.execute(

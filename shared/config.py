@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import Optional
+import warnings
 
 
 class Settings(BaseSettings):
@@ -25,6 +27,18 @@ class Settings(BaseSettings):
     # Service
     service_name: str = "iot-service"
     service_port: int = 8000
+    
+    @field_validator('jwt_secret_key')
+    @classmethod
+    def validate_jwt_secret_key(cls, v: str) -> str:
+        """Validate JWT secret key is not using default insecure value"""
+        if v == "your-secret-key-change-in-production" and len(v) < 32:
+            warnings.warn(
+                "WARNING: Using default JWT secret key. This is insecure! "
+                "Set JWT_SECRET_KEY environment variable to a secure random string.",
+                UserWarning
+            )
+        return v
     
     class Config:
         env_file = ".env"

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import sys
 import os
 
@@ -143,7 +143,7 @@ async def create_station(
             "location": station.location,
             "latitude": station.latitude,
             "longitude": station.longitude,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         return {
@@ -192,7 +192,7 @@ async def create_reading(
 ):
     """Record an air quality reading"""
     try:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         aqi = calculate_aqi(reading.pm25, reading.pm10, reading.co, reading.no2, reading.o3)
         
         result = db.execute(
@@ -316,7 +316,7 @@ async def get_current_conditions(
     conditions = result.fetchall()
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "stations": [
             {
                 "station_id": c[0],
@@ -358,7 +358,7 @@ async def get_air_quality_trends(
     current_user: dict = Depends(get_current_user)
 ):
     """Get air quality trends"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     if station_id:
         result = db.execute(

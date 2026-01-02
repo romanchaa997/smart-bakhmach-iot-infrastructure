@@ -19,7 +19,7 @@ from shared.auth.jwt_handler import (
 )
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, text
-from datetime import datetime
+from datetime import datetime, timezone
 
 app = FastAPI(
     title="IoT Smart City Platform - API Gateway",

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import sys
 import os
 import math
@@ -121,7 +121,7 @@ async def create_vehicle(
             "vehicle_id": vehicle.vehicle_id,
             "vehicle_type": vehicle.vehicle_type,
             "route_id": vehicle.route_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         return {
@@ -169,7 +169,7 @@ async def create_telemetry(
 ):
     """Record vehicle telemetry"""
     try:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         result = db.execute(
             text("""
                 INSERT INTO transport_telemetry 
@@ -266,7 +266,7 @@ async def get_live_positions(
     positions = result.fetchall()
     
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "vehicles": [
             {
                 "vehicle_id": p[0],
@@ -289,7 +289,7 @@ async def get_route_analytics(
     current_user: dict = Depends(get_current_user)
 ):
     """Get analytics for a specific route"""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     result = db.execute(
         text("""
