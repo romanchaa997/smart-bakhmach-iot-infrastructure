@@ -6,6 +6,22 @@ __pycache__/
 # C extensions
 *.so
 
+# Environment and secrets
+.env
+.env.local
+*.pem
+*.key
+secrets/
+
+# Database backups
+backup_*.sql
+*.dump
+
+# Docker volumes
+postgres-data/
+mosquitto-data/
+mosquitto-logs/
+
 # Distribution / packaging
 .Python
 build/
